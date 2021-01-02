@@ -3,7 +3,7 @@ from __future__ import (
 
 import numpy as np
 from scipy.optimize import newton
-from astropy import units as u
+from astropy import units as u, constants as const
 
 # Galactic conversion factor value (Bolatto+13)
 alphaCO10_Galactic = 4.35 * u.Unit('Msun s / (pc2 K km)')
@@ -11,7 +11,7 @@ alphaCO10_Galactic = 4.35 * u.Unit('Msun s / (pc2 K km)')
 
 def predict_alphaCO10_PHANGS(Zprime=None):
     """
-    Predict alphaCO10 from Z' assuming a beta=-1.6 power-law scaling.
+    Predict alphaCO10 with a simple metallicity-dependent prescription.
 
     This is the default prescription used in several PHANGS papers
     (e.g., Sun+20). It is similar to the metallicity-dependent part of
@@ -71,7 +71,7 @@ def predict_alphaCO10_N12(Zprime=None, WCO10GMC=None):
     alphaCO10 = 10.7 * np.atleast_1d(WCO)**-0.32
     alphaCO10[alphaCO10 > 6.3] = 6.3
     alphaCO10 = alphaCO10 / np.atleast_1d(Zprime)**0.65
-    alphaCO10 = alphaCO10 * 1.35  # include Helium contribution
+    alphaCO10 *= 1.35  # include Helium contribution
 
     if alphaCO10.size == 1:
         alphaCO10 = alphaCO10.item()
@@ -85,7 +85,7 @@ def predict_alphaCO10_B13(
     """
     Predict alphaCO10 with the Bolatto+13 prescription.
     
-    This function implements the suggested prescription by Bolatto+13
+    This function implements a prescription suggested by Bolatto+13
     (Equation 31 therein) in both non-iterative and iterative modes.
     + In the non-iterative mode, it uses `Zprime`, `SigmaGMC`, and
       `Sigmatotkpc` to calculate alphaCO10 directly.
@@ -266,3 +266,148 @@ def predict_alphaCO10_A17(logOH=None, Mstar=None, SFR=None, z=None):
     if alphaCO10.size == 1:
         alphaCO10 = alphaCO10.item()
     return alphaCO10 * u.Unit('Msun s / (pc2 K km)')
+
+
+def predict_alphaCO_G20(
+        J='1-0', r_beam=None, Zprime=None,
+        R_21=None, T_peak=None, W_CO=None):
+    """
+    Predict alphaCO with the Gong+20 prescription.
+
+    This function implements a set of prescriptions suggested by
+    Gong+20 (Table 3 therein). It provides conversion factors
+    for both CO(1-0) and CO(2-1) lines based on metallicity,
+    observable CO line properties, and resolution of the CO data.
+    
+    Depending on the availability of input variables, one of the
+    following four methods will be used to predict alphaCO:
+
+    + 'Z only' method -- this is adopted if:
+      1) only `Zprime` (metallicity) is available; or
+      2) `r_beam` (CO data resolution) is unspecified; or
+      3) `r_beam` >= 100pc and no `R_21` (CO line ratio) is provided.
+
+    + 'Z & R_21' method -- this is adopted if both `Zprime` and `R_21`
+      are available.
+
+    + 'Z & T_peak' method -- this is adopted if both `Zprime` and
+      `T_peak` (CO line peak temperature) are available, but `R_21` is
+      not available.
+
+    + 'Z & W_CO' method -- this is adopted if both `Zprime` and `W_CO`
+      (CO line integrated intensity) are available, but neither `R_21`
+      nor `T_peak` is available.
+
+    Reference: Gong et al. (2020), ApJ, 903, 142
+
+    Parameters
+    ----------
+    J : {'1-0', '2-1'}
+        CO transition in question
+    r_beam : number or `~astropy.units.Quantity`
+        Resolution (beam size) of the CO observation,
+        in units of parsec.
+    Zprime : number or array-like
+        Metallicity normalized to the solar value
+    R_21 : number or array-like or `~astropy.units.Quantity`
+        CO(2-1) to CO(1-0) line ratio at the specified resolution
+    T_peak : number or array-like or `~astropy.units.Quantity`
+        CO line peak temperature at the specified resolution,
+        in units of Kelvin.
+    W_CO : number or array-like or `~astropy.units.Quantity`
+        CO line integrated intensity at the specified resolution,
+        in units of K*km/s.
+
+    Returns
+    -------
+    alphaCO : `~astropy.units.Quantity` object
+        Predicted CO-to-H2 conversion factor, carrying a unit of
+        Msun/pc^2/(K*km/s).
+    """
+    if J not in ('1-0', '2-1'):
+        raise ValueError(
+            "Prescriptions are only available for"
+            "the J=1-0 and J=2-1 transitions")
+
+    if Zprime is None:
+        raise ValueError(
+            "`Zprime` is required for predicting alphaCO")
+
+    if hasattr(r_beam, 'unit'):
+        r_ = r_beam.to('pc').value
+    else:
+        r_ = r_beam
+    if hasattr(T_peak, 'unit'):
+        T_ = T_peak.to('K').value
+    else:
+        T_ = T_peak
+    if hasattr(W_CO, 'unit'):
+        W_ = W_CO.to('K km s-1').value
+    else:
+        W_ = W_CO
+
+    if r_ is None:
+        method = 'Z only'
+    elif r_ >= 100 and R_21 is None:
+        method = 'Z only'
+    else:
+        if R_21 is not None:
+            method = 'Z & R_21'
+        elif T_ is not None:
+            method = 'Z & T_peak'
+        elif W_ is not None:
+            method = 'Z & W_CO'
+        else:
+            method = 'Z only'
+
+    if method == 'Z only':
+        if J == '1-0':
+            XCO = 1.4e20 * np.atleast_1d(Zprime)**-0.80
+        else:
+            XCO = 2.0e20 * np.atleast_1d(Zprime)**-0.50
+    elif method == 'Z & R_21':
+        if J == '1-0':
+            XCO = (
+                0.93e20 *
+                (np.atleast_1d(R_21)/0.6)**-0.87 *
+                np.atleast_1d(Zprime)**-0.80 *
+                np.min([r_, 100])**0.081)
+        else:
+            XCO = (
+                1.5e20 *
+                (np.atleast_1d(R_21)/0.6)**-1.69 *
+                np.atleast_1d(Zprime)**-0.50 *
+                np.min([r_, 100])**0.063)
+    elif method == 'Z & T_peak':
+        if J == '1-0':
+            XCO = (
+                1.8e20 *
+                np.atleast_1d(T_)**(-0.64+0.24*np.log10(r_)) *
+                np.atleast_1d(Zprime)**-0.80 * r_**-0.083)
+        else:
+            XCO = (
+                2.7e20 *
+                np.atleast_1d(T_)**(-1.07+0.37*np.log10(r_)) *
+                np.atleast_1d(Zprime)**-0.50 * r_**-0.13)
+    else:
+        if J == '1-0':
+            XCO = (
+                6.1e20 *
+                np.atleast_1d(W_)**(-0.54+0.19*np.log10(r_)) *
+                np.atleast_1d(Zprime)**-0.80 * r_**-0.25)
+        else:
+            XCO = (
+                21.1e20 *
+                np.atleast_1d(T_)**(-0.97+0.34*np.log10(r_)) *
+                np.atleast_1d(Zprime)**-0.50 * r_**-0.41)
+
+    if XCO.size == 1:
+        XCO = XCO.item()
+    alphaCO = (
+        XCO * u.Unit('cm-2 K-1 km-1 s') *
+        const.u * 1.00794 * 2).to('Msun s / (pc2 K km)')
+    alphaCO *= 1.35  # include Helium contribution
+    return alphaCO
+    
+            
+        
