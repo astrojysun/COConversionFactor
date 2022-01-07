@@ -9,13 +9,13 @@ from astropy import units as u, constants as const
 alphaCO10_Galactic = 4.35 * u.Unit('Msun s / (pc2 K km)')
 
 
-def predict_alphaCO10_PHANGS(Zprime=None):
+def predict_alphaCO10_S20(Zprime=None):
     """
-    Predict alphaCO10 with a simple metallicity-dependent prescription.
+    Predict alphaCO10 with a simple power-law metallicity dependence.
 
-    This is the default prescription used in several PHANGS papers
-    (e.g., Sun+20). It is similar to the metallicity-dependent part of
-    the xCOLD-GASS prescription (Accurso+17).
+    This is the default prescription used in Sun et al. (2020).
+    It is similar to the metallicity-dependent part of the
+    xCOLD-GASS prescription (Accurso+17).
 
     Reference: Accurso et al. 2017, MNRAS, 470, 4750;
                Sun et al. 2020, ApJ, 892, 148
@@ -41,14 +41,14 @@ def predict_alphaCO10_PHANGS(Zprime=None):
 def predict_alphaCO10_N12(Zprime=None, WCO10GMC=None):
     """
     Predict alphaCO10 with the Narayanan+12 prescription.
-    
+
     This corresponds to Equation 11 in Narayanan+12.
     Also note that an additional multiplicative factor of 1.35 is
     included here to correct for Helium contribution (it is not
     included in the original formula in this paper).
 
     Reference: Narayanan et al. (2012), MNRAS, 421, 3127
-    
+
     Parameters
     ----------
     Zprime : number or array-like
@@ -84,7 +84,7 @@ def predict_alphaCO10_B13(
         SigmaGMC=None, Sigmatotkpc=None, **kwargs):
     """
     Predict alphaCO10 with the Bolatto+13 prescription.
-    
+
     This function implements a prescription suggested by Bolatto+13
     (Equation 31 therein) in both non-iterative and iterative modes.
     + In the non-iterative mode, it uses `Zprime`, `SigmaGMC`, and
@@ -94,7 +94,7 @@ def predict_alphaCO10_B13(
       is usually more useful for observers.
 
     Reference: Bolatto et al. (2013), ARA&A, 51, 207
-    
+
     Parameters
     ----------
     iterative : bool
@@ -181,7 +181,7 @@ def predict_alphaCO10_B13(
             else:
                 alphaCO10 += [newton(func, x0, **kwargs)]
         alphaCO10 = np.array(alphaCO10).reshape(Zp.shape)
-        
+
     if alphaCO10.size == 1:
         alphaCO10 = alphaCO10.item()
     return alphaCO10 * u.Unit('Msun s / (pc2 K km)')
@@ -201,7 +201,7 @@ def predict_alphaCO10_A16(logOH=None):
         Gas phase abundance, in units of 12+log(O/H).
         Note that Amorin+16 adopted an N2-based calibration
         (Perez-Montero & Contini 2009).
-        
+
     Returns
     -------
     alphaCO10 : `~astropy.units.Quantity` object
@@ -238,7 +238,7 @@ def predict_alphaCO10_A17(logOH=None, Mstar=None, SFR=None, z=None):
         Gaalxy global star formation rate, in units of Msun/yr
     z : number or array-like
         Galaxy redshift
-        
+
     Returns
     -------
     alphaCO10 : `~astropy.units.Quantity` object
@@ -262,15 +262,15 @@ def predict_alphaCO10_A17(logOH=None, Mstar=None, SFR=None, z=None):
             (0.3 + 0.13*z) * (logMstar - 10.5))
         log_Delta_MS = log_sSFR - log_sSFR_MS
         alphaCO10 = alphaCO10 * 10**(0.062 * log_Delta_MS)
-        
+
     if alphaCO10.size == 1:
         alphaCO10 = alphaCO10.item()
     return alphaCO10 * u.Unit('Msun s / (pc2 K km)')
 
 
 def predict_alphaCO_G20(
-        J='1-0', r_beam=None, Zprime=None,
-        R_21=None, T_peak=None, W_CO=None):
+        J='1-0', r_beam=None, r_thresh=100*u.pc,
+        Zprime=None, R_21=None, T_peak=None, W_CO=None):
     """
     Predict alphaCO with the Gong+20 prescription.
 
@@ -278,14 +278,14 @@ def predict_alphaCO_G20(
     Gong+20 (Table 3 therein). It provides conversion factors
     for both CO(1-0) and CO(2-1) lines based on metallicity,
     observable CO line properties, and resolution of the CO data.
-    
+
     Depending on the availability of input variables, one of the
     following four methods will be used to predict alphaCO:
 
     + 'Z only' method -- this is adopted if:
       1) only `Zprime` (metallicity) is available; or
       2) `r_beam` (CO data resolution) is unspecified; or
-      3) `r_beam` >= 100pc and no `R_21` (CO line ratio) is provided.
+      3) `r_beam` >= `r_thresh` and no `R_21` (line ratio) is provided.
 
     + 'Z & R_21' method -- this is adopted if both `Zprime` and `R_21`
       are available.
@@ -307,6 +307,10 @@ def predict_alphaCO_G20(
     r_beam : number or `~astropy.units.Quantity`
         Resolution (beam size) of the CO observation,
         in units of parsec.
+    r_thresh : number or `~astropy.units.Quantity`
+        Resolution threshold (in units of parsec), above which the
+        'Z only' method is preferred over 'Z & T_peak' or 'Z & W_CO'.
+        Default is 100 pc.
     Zprime : number or array-like
         Metallicity normalized to the solar value
     R_21 : number or array-like or `~astropy.units.Quantity`
@@ -337,6 +341,10 @@ def predict_alphaCO_G20(
         r_ = r_beam.to('pc').value
     else:
         r_ = r_beam
+    if hasattr(r_thresh, 'unit'):
+        r_th = r_thresh.to('pc').value
+    else:
+        r_th = r_thresh
     if hasattr(T_peak, 'unit'):
         T_ = T_peak.to('K').value
     else:
@@ -348,7 +356,7 @@ def predict_alphaCO_G20(
 
     if r_ is None:
         method = 'Z only'
-    elif r_ >= 100 and R_21 is None:
+    elif r_ >= r_th and R_21 is None:
         method = 'Z only'
     else:
         if R_21 is not None:
@@ -371,13 +379,13 @@ def predict_alphaCO_G20(
                 0.93e20 *
                 (np.atleast_1d(R_21)/0.6)**-0.87 *
                 np.atleast_1d(Zprime)**-0.80 *
-                np.min([r_, 100])**0.081)
+                np.min([r_, r_th])**0.081)
         else:
             XCO = (
                 1.5e20 *
                 (np.atleast_1d(R_21)/0.6)**-1.69 *
                 np.atleast_1d(Zprime)**-0.50 *
-                np.min([r_, 100])**0.063)
+                np.min([r_, r_th])**0.063)
     elif method == 'Z & T_peak':
         if J == '1-0':
             XCO = (
@@ -408,6 +416,3 @@ def predict_alphaCO_G20(
         const.u * 1.00794 * 2).to('Msun s / (pc2 K km)')
     alphaCO *= 1.35  # include Helium contribution
     return alphaCO
-    
-            
-        
