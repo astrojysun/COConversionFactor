@@ -80,6 +80,111 @@ def predict_alphaCO10_N12(Zprime=None, WCO10GMC=None):
 
 def predict_alphaCO10_B13(
         iterative=True, suppress_error=False, Zprime=None,
+        WCO10kpc=None, Sigmaelsekpc=None, Sigmatotkpc=None,
+        T_ex=30., **kwargs):
+    """
+    Predict alphaCO10 with the (refined) Bolatto+13 prescription.
+
+    This function implements a refined version of the prescription
+    suggested by Bolatto+13 in both non-iterative and iterative modes.
+    + In the non-iterative mode, it uses `Zprime` and `Sigmatotkpc` to
+      calculate alphaCO10 directly.
+    + In the iterative mode, it uses `Zprime`, `WCO10kpc`, and
+      `Sigmaelsekpc` to iteratively solve for alphaCO10. This mode
+      is usually more useful for observers.
+
+    *Important*
+    (1) The GMC surface density term in the original formula is
+    INTENTIONALLY SUPPRESSED here to avoid non-sensical solutions.
+    (2) The predicted alphaCO TRUNCATES at a lower boundary set by the
+    optically thin limit.
+
+    Reference: Bolatto et al. (2013), ARA&A, 51, 207
+
+    Parameters
+    ----------
+    iterative : bool
+        Whether to solve for alphaCO10 iteratively (default: True).
+        See description above in the docstring.
+    suppress_error : bool
+        Whether to suppress error if iteration fail to converge.
+        Default is to not suppress.
+    Zprime : number or array-like
+        Metallicity normalized to the solar value
+    WCO10kpc : number or array-like or `~astropy.units.Quantity`
+        Integrated CO(1-0) intensity on kpc-scale, in units of K*km/s.
+    Sigmaelsekpc : number or array-like or `~astropy.units.Quantity`
+        Mass surface density of HI gas + stars on kpc-scale,
+        in units of Msun/pc^2.
+    Sigmatotkpc : number or array-like or `~astropy.units.Quantity`
+        Mass surface density of all gas + stars on kpc-scale,
+        in units of Msun/pc^2.
+    T_ex : number
+        CO excitation temperature (in Kelvin) used to calculate the
+        optically thin limit. Default value is 30.
+    **kwargs
+        Keywords to be passed to `~scipy.optimize.newton`.
+        Useful only when using the iterative prescriptions.
+
+    Returns
+    -------
+    alphaCO10 : `~astropy.units.Quantity` object
+        Predicted CO-to-H2 conversion factor, carrying a unit of
+        Msun/pc^2/(K*km/s).
+    """
+    if not iterative:
+        # CO faint correction
+        alphaCO10 = 2.9 * np.exp(0.4 / np.atleast_1d(Zprime))
+        # starburst correction
+        if hasattr(Sigmatotkpc, 'unit'):
+            Sigtotkpc100 = Sigmatotkpc.to('100 Msun / pc^2').value
+        else:
+            Sigtotkpc100 = np.atleast_1d(Sigmatotkpc) / 100
+        f_SB = Sigtotkpc100**-0.5
+        f_SB[f_SB > 1] = 1
+        alphaCO10 = alphaCO10 * f_SB
+    else:
+        if hasattr(WCO10kpc, 'unit'):
+            WK = WCO10kpc.to('K km / s').value
+        else:
+            WK = WCO10kpc
+        if hasattr(Sigmaelsekpc, 'unit'):
+            SK = Sigmaelsekpc.to('Msun / pc2').value
+        else:
+            SK = Sigmaelsekpc
+        Zp, WK, SK = np.broadcast_arrays(Zprime, WK, SK)
+        alphaCO10 = []
+        x0 = alphaCO10_Galactic.value
+        for Zp_, WK_, SK_ in zip(Zp.ravel(), WK.ravel(), SK.ravel()):
+            if not ((Zp_ > 0) and (WK_ > 0) and (SK_ > 0)):
+                alphaCO10 += [np.nan]
+                continue
+            def func(x):
+                return predict_alphaCO10_B13(
+                    iterative=False, Zprime=Zp_,
+                    Sigmatotkpc=(WK_*x+SK_)).value - x
+            if suppress_error:
+                try:
+                    alphaCO10 += [newton(func, x0, **kwargs)]
+                except RuntimeError as e:
+                    print(e)
+                    alphaCO10 += [np.nan]
+            else:
+                alphaCO10 += [newton(func, x0, **kwargs)]
+        alphaCO10 = np.array(alphaCO10).reshape(Zp.shape)
+
+    # clip at optically thin limit
+    alphaCO10_OTL = (
+        0.34 * (T_ex / 30) * np.exp(5.53/T_ex - 5.53/30))
+    alphaCO10[alphaCO10 < alphaCO10_OTL] = alphaCO10_OTL
+
+    if alphaCO10.size == 1:
+        alphaCO10 = alphaCO10.item()
+    return alphaCO10 * u.Unit('Msun s / (pc2 K km)')
+
+
+def predict_alphaCO10_B13_original(
+        iterative=True, suppress_error=False, Zprime=None,
         WCO10GMC=None, WCO10kpc=None, Sigmaelsekpc=None,
         SigmaGMC=None, Sigmatotkpc=None, **kwargs):
     """
