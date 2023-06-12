@@ -5,7 +5,7 @@ Python implementation of existing CO-to-H2 conversion factor prescriptions in th
 ## Table of content
 
 **[`CO_conversion_factor.alphaCO`](https://github.com/astrojysun/COConversionFactor/blob/main/CO_conversion_factor/alphaCO.py)** - This module includes a collection of conversion factor prescriptions
-+ `predict_alphaCO10_PHANGS`: a simple metallicity-dependent prescription (see [Sun et al. 2020](https://ui.adsabs.harvard.edu/abs/2020ApJ...892..148S)).
++ `predict_alphaCO10_S20`: a simple metallicity-dependent prescription (see [Sun et al. 2020](https://ui.adsabs.harvard.edu/abs/2020ApJ...892..148S)).
 + `predict_alphaCO10_N12`: the [Narayanan et al. (2012)](https://ui.adsabs.harvard.edu/abs/2012MNRAS.421.3127N) prescription.
 + `predict_alphaCO10_B13`: the [Bolatto et al. (2013)](https://ui.adsabs.harvard.edu/abs/2013ARA%26A..51..207B) prescription.
 + `predict_alphaCO10_A16`: the [Amor&iacute;n et al. (2016)](https://ui.adsabs.harvard.edu/abs/2016A&A...588A..23A) prescription.
