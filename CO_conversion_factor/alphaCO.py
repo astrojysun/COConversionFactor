@@ -418,7 +418,7 @@ def predict_alphaCO_G20(
         Default is 100 pc.
     Zprime : number or array-like
         Metallicity normalized to the solar value
-    R_21 : number or array-like or `~astropy.units.Quantity`
+    R_21 : number or array-like
         CO(2-1) to CO(1-0) line ratio at the specified resolution
     T_peak : number or array-like or `~astropy.units.Quantity`
         CO line peak temperature at the specified resolution,
@@ -521,3 +521,149 @@ def predict_alphaCO_G20(
         const.u * 1.00794 * 2).to('Msun s / (pc2 K km)')
     alphaCO *= 1.35  # include Helium contribution
     return alphaCO
+
+
+def predict_alphaCO_SL24(
+        J='1-0', Zprime=None, Sigma_star=None, Sigma_sfr=None,
+        metal_pl=-1.5, Zprime_uplim=2.0, Zprime_lolim=0.2,
+        stellar_pl=-0.25, Sigma_star_thresh=1e2, Sigma_star_uplim=1e3,
+        sfr_pl=0.125, Sigma_sfr_norm=1.8e-2, rco_norm=None,
+        rco_lolim=None, rco_uplim=None, return_all_terms=False):
+    """
+    Predict alphaCO with the Schinnerer & Leroy (2024) prescription.
+
+    This function implements a set of prescriptions suggested by
+    Schinnerer & Leroy (2024). It predicts conversion factors for
+    the CO(1-0), CO(2-1), or CO(3-2) lines based on metallicity,
+    stellar surface density, and SFR surface density on kpc scales.
+
+    Reference: Schinnere & Leroy (2024), ARA&A
+
+    Parameters
+    ----------
+    J : {'1-0', '2-1', '3-2'}
+        CO transition in question
+    Zprime : number or array-like
+        Metallicity normalized to the solar value
+    Sigma_star : number or array-like or `~astropy.units.Quantity`
+        Stellar mass surface density (in Msun/pc^2 unit).
+    Sigma_sfr : number or array-like or `~astropy.units.Quantity`
+        Star formation rate surface density (in Msun/yr/kpc^2 unit).
+
+
+    Other parameters
+    ----------------
+    metal_pl : number (default: -1.5)
+        Power-law index on metallicity for the CO-dark term.
+    Zprime_uplim : number (default: 2.0)
+        Upper limit of Zprime, at which the CO-dark term is clipped.
+    Zprime_lolim : number (default: 0.2)
+        Lower limit of Zprime, at which the CO-dark term is clipped.
+    stellar_pl : number (default: -0.25)
+        Power-law index on stellar (mass) surface density for the
+        starburst term.
+    Sigma_star_thresh : number or Quantity (default: 1e2)
+        Stellar surface density threshold (in Msun/pc^2 unit),
+        above which the starburst term is turned on.
+    Sigma_star_uplim : number or Quantity (default: 1e3)
+        Upper limit of stellar surface density (in Msun/pc^2 unit),
+        at which the starburst term is clipped.
+    sfr_pl : number (default: 0.125)
+        Power-law index on SFR surface density for CO line ratio.
+    Sigma_sfr_norm : number or Quantity (default: 1.8e-2)
+        Normalization of the SFR surface density (in Msun/yr/kpc^2).
+    rco_norm : number
+        Normalization of the CO line ratio (ignored for J=1-0).
+        Default is 0.65 for J=2-1 and 0.325 for J=3-2.
+    rco_lolim : number
+        Lower limit of the CO line ratio (ignored for J=1-0).
+        Default is 0.35 for J=2-1 and 0.175 for J=3-2.
+    rco_uplim : number
+        Upper limit of the CO line ratio (ignored for J=1-0).
+        Default is 1.0 for J=2-1 and 0.5 for J=3-2.
+    return_all_terms : bool (default: False)
+        Whether to return all intermediate terms (CO-dark, starburst,
+        line ratio) together with the predicted conversion factor.
+
+    Returns
+    -------
+    alphaCO : `~astropy.units.Quantity` object
+        Predicted CO-to-H2 conversion factor, carrying a unit of
+        Msun/pc^2/(K*km/s).
+    additional_returns
+        If `return_all_terms` is set to True, then the intermediate
+        terms (CO-dark, starburst, line ratio) are also returned.
+    """
+    if J not in ('1-0', '2-1', '3-2'):
+        raise ValueError(
+            "Prescriptions are only available for"
+            "the J=1-0, 2-1, and 3-2 transitions")
+
+    if Zprime is None or Sigma_star is None:
+        raise ValueError(
+            "Both `Zprime` and `Sigma_star` are needed for"
+            "predicting alphaCO")
+    if Sigma_sfr is None and J != '1-0':
+        raise ValueError(
+            "`Sigma_sfr` is needed when J != 1-0")
+
+    if J == '2-1':
+        if rco_norm is None:
+            rco_norm = 0.65
+        if rco_lolim is None:
+            rco_lolim = 0.35
+        if rco_uplim is None:
+            rco_uplim = 1.0
+    elif J == '3-2':
+        if rco_norm is None:
+            rco_norm = 0.325
+        if rco_lolim is None:
+            rco_lolim = 0.175
+        if rco_uplim is None:
+            rco_uplim = 0.5
+
+    if hasattr(Sigma_star, 'unit'):
+        Sigstar = Sigma_star.to('Msun pc-2').value
+    else:
+        Sigstar = Sigma_star
+    if hasattr(Sigma_star_thresh, 'unit'):
+        Sigstar_thresh = Sigma_star_thresh.to('Msun pc-2').value
+    else:
+        Sigstar_thresh = Sigma_star_thresh
+    if hasattr(Sigma_star_uplim, 'unit'):
+        Sigstar_uplim = Sigma_star_uplim.to('Msun pc-2').value
+    else:
+        Sigstar_uplim = Sigma_star_uplim
+    if hasattr(Sigma_sfr, 'unit'):
+        Sigsfr = Sigma_sfr.to('Msun yr-1 kpc-2').value
+    else:
+        Sigsfr = Sigma_sfr
+    if hasattr(Sigma_sfr_norm, 'unit'):
+        Sigsfr_norm = Sigma_sfr_norm.to('Msun yr-1 kpc-2').value
+    else:
+        Sigsfr_norm = Sigma_sfr_norm
+
+    # CO-dark term
+    f_term = np.minimum(
+        np.maximum(Zprime, Zprime_lolim), Zprime_uplim
+    ) ** metal_pl
+
+    # starburst term
+    g_term = np.minimum(
+        np.maximum(Sigstar/Sigstar_thresh, 1),
+        Sigstar_uplim/Sigstar_thresh
+    ) ** stellar_pl
+
+    # CO line ratio
+    if J == '1-0':
+        rco = 1.0
+    else:
+        rco = rco_norm * (Sigsfr / Sigsfr_norm) ** sfr_pl
+        rco = np.minimum(np.maximum(rco, rco_lolim), rco_uplim)
+
+    alphaCO = alphaCO10_Galactic * f_term * g_term / rco
+
+    if return_all_terms:
+        return alphaCO, f_term, g_term, rco
+    else:
+        return alphaCO
