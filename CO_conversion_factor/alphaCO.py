@@ -523,6 +523,66 @@ def predict_alphaCO_G20(
     return alphaCO
 
 
+def predict_alphaCO21_T24(
+        vdisp_150pc=None, vdisp_150pc_lolim=3., vdisp_150pc_uplim=30.,
+        Zprime=None):
+    """
+    Predict alphaCO with the Teng+24 prescription.
+
+    This is the recommended prescription in Teng+24 (Eq. 2 therein).
+
+    Reference: Teng et al. (2024), ApJ, 961, 42
+
+    Parameters
+    ----------
+    vdisp_150pc : number or array-like or `~astropy.units.Quantity`
+        Average molecular gas velocity dispersion (in km/s unit)
+        measured on 150 pc scales.
+    vdisp_150pc_lolim : number or `~astropy.units.Quantity`
+        Lower limit of molecular gas velocity dispersion (in km/s unit),
+        at which the prescription is clipped.
+    vdisp_150pc_uplim : number or `~astropy.units.Quantity`
+        Upper limit of molecular gas velocity dispersion (in km/s unit),
+        at which the prescription is clipped.
+    Zprime : number or array-like
+        Metallicity normalized to the solar value. If given, it will
+        only be used to decide if a warning message is triggered.
+
+    Returns
+    -------
+    alphaCO21 : `~astropy.units.Quantity` object
+        Predicted CO(2-1)-to-H2 conversion factor, carrying a unit of
+        Msun/pc^2/(K*km/s).
+    """
+    if vdisp_150pc is None:
+        raise ValueError(
+            "`vdisp_150pc` is necessary for predicting alphaCO21")
+
+    if hasattr(vdisp_150pc, 'unit'):
+        vdisp = vdisp_150pc.to('km s-1').value
+    else:
+        vdisp = vdisp_150pc
+    if hasattr(vdisp_150pc_lolim, 'unit'):
+        vdisp_lolim = vdisp_150pc_lolim.to('km s-1').value
+    else:
+        vdisp_lolim = vdisp_150pc_lolim
+    if hasattr(vdisp_150pc_uplim, 'unit'):
+        vdisp_uplim = vdisp_150pc_uplim.to('km s-1').value
+    else:
+        vdisp_uplim = vdisp_150pc_uplim
+
+    if Zprime is not None:
+        if Zprime < 0.5:
+            print(
+                "WARNING: prescription likely not appropriate at "
+                "< 0.5 solar metallicity")
+
+    alphaCO21 = np.minimum(np.maximum(
+        vdisp, vdisp_lolim), vdisp_uplim)**-0.81 * 10**1.05 / 0.65
+
+    return alphaCO21 * u.Unit('Msun s / (pc2 K km)')
+
+
 def predict_alphaCO_SL24(
         J='1-0', Zprime=None, Sigma_star=None, Sigma_sfr=None,
         metal_pl=-1.5, Zprime_uplim=2.0, Zprime_lolim=0.2,
