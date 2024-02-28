@@ -525,7 +525,7 @@ def predict_alphaCO_G20(
 
 def predict_alphaCO21_T24(
         vdisp_150pc=None, vdisp_150pc_lolim=3., vdisp_150pc_uplim=30.,
-        Zprime=None):
+        add_metal=False, Zprime=None, Zprime_lolim=0.5, Zprime_uplim=2.):
     """
     Predict alphaCO with the Teng+24 prescription.
 
@@ -544,9 +544,11 @@ def predict_alphaCO21_T24(
     vdisp_150pc_uplim : number or `~astropy.units.Quantity`
         Upper limit of molecular gas velocity dispersion (in km/s unit),
         at which the prescription is clipped.
+    add_metal : bool (default: False)
+        Whether to include an additional metallicity dependence
+        (Teng, priv. comm.)
     Zprime : number or array-like
-        Metallicity normalized to the solar value. If given, it will
-        only be used to decide if a warning message is triggered.
+        Metallicity normalized to the solar value.
 
     Returns
     -------
@@ -572,13 +574,23 @@ def predict_alphaCO21_T24(
         vdisp_uplim = vdisp_150pc_uplim
 
     if Zprime is not None:
-        if Zprime < 0.5:
+        if not add_metal and Zprime < 0.5:
             print(
                 "WARNING: prescription likely not appropriate at "
                 "< 0.5 solar metallicity")
 
-    alphaCO21 = np.minimum(np.maximum(
-        vdisp, vdisp_lolim), vdisp_uplim)**-0.81 * 10**1.05 / 0.65
+    if not add_metal:
+        alphaCO21 = (
+            np.minimum(np.maximum(
+                vdisp, vdisp_lolim), vdisp_uplim)**-0.81 *
+            10**1.05 / 0.65)
+    else:
+        alphaCO21 = (
+            np.minimum(np.maximum(
+                Zprime, Zprime_lolim), Zprime_uplim)**-1.6 *
+            np.minimum(np.maximum(
+                vdisp, vdisp_lolim), vdisp_uplim)**-0.67 *
+            10**1.00 / 0.65)
 
     return alphaCO21 * u.Unit('Msun s / (pc2 K km)')
 
