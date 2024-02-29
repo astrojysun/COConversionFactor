@@ -525,7 +525,7 @@ def predict_alphaCO_G20(
 
 def predict_alphaCO21_T24(
         vdisp_150pc=None, vdisp_150pc_lolim=3., vdisp_150pc_uplim=30.,
-        add_metal=False, Zprime=None, Zprime_lolim=0.5, Zprime_uplim=2.):
+        add_metal=False, Zprime=None, Zprime_lolim=0.2, Zprime_uplim=2.):
     """
     Predict alphaCO with the Teng+24 prescription.
 
@@ -597,7 +597,7 @@ def predict_alphaCO21_T24(
 
 def predict_alphaCO_SL24(
         J='1-0', Zprime=None, Sigma_star=None, Sigma_sfr=None,
-        metal_pl=-1.5, Zprime_uplim=2.0, Zprime_lolim=0.2,
+        metal_pl=-1.5, Zprime_uplim=2., Zprime_lolim=0.2,
         stellar_pl=-0.25, Sigma_star_thresh=1e2, Sigma_star_uplim=1e3,
         sfr_pl=0.125, Sigma_sfr_norm=1.8e-2, rco_norm=None,
         rco_lolim=None, rco_uplim=None, return_all_terms=False):
