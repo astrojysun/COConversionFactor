@@ -13,6 +13,7 @@ Python implementation of existing CO-to-H2 conversion factor prescriptions in th
 + `predict_alphaCO10_A17`: the [Accurso et al. (2017)](https://ui.adsabs.harvard.edu/abs/2017MNRAS.470.4750A) prescription.
 + `predict_alphaCO_G20`: the [Gong et al. (2020)](https://ui.adsabs.harvard.edu/abs/2020ApJ...903..142G) prescription.
 + `predict_alphaCO21_T24`: the [Teng et al. (2024)](https://ui.adsabs.harvard.edu/abs/2024ApJ...961...42T) prescription.
++ `predict_alphaCO_SL24`: the [Schinnerer & Leroy (2024)](https://ui.adsabs.harvard.edu/abs/2024arXiv240319843S) prescription.
 + (suggestions for other prescriptions are welcome)
 
 **[`CO_conversion_factor.metallicity`](https://github.com/astrojysun/COConversionFactor/blob/main/CO_conversion_factor/metallicity.py)** - This module includes tools for predicting metallicity from scaling relations
