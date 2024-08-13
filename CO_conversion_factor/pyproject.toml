@@ -1,0 +1,29 @@
+[project]
+name = "CO_conversion_factor"
+description = "Python implementation of existing CO-to-H2 conversion factor prescriptions in the literature."
+readme = "README.md"
+authors = [
+    { name = "Jiayi Sun", email = "jysun.princeton@gmail.com" }
+]
+license = { text = "GPL-3.0 License" }
+dependencies = [
+    "numpy",
+    "scipy",
+    "astropy",
+]
+dynamic = ["version"]
+
+[project.urls]
+homepage = "https://github.com/astrojysun/COConversionFactor"
+
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = 'setuptools.build_meta'
+
+[tool.setuptools_scm]
+write_to = "my_package/_version.py"
+
+[tool.setuptools]
+zip_safe = false
+
+[tool.setuptools.packages.find]
