@@ -598,7 +598,7 @@ def predict_alphaCO21_T24(
 def predict_alphaCO_SL24(
         J='1-0', Zprime=None, Sigma_star=None, Sigma_sfr=None,
         metal_pl=-1.5, Zprime_uplim=2., Zprime_lolim=0.2,
-        stellar_pl=-0.25, Sigma_star_thresh=1e2, Sigma_star_uplim=1e3,
+        stellar_pl=-0.25, Sigma_star_thresh=1e2, Sigma_star_uplim=np.inf,
         sfr_pl=0.125, Sigma_sfr_norm=1.8e-2, rco_norm=None,
         rco_lolim=None, rco_uplim=None, return_all_terms=False):
     """
@@ -609,7 +609,7 @@ def predict_alphaCO_SL24(
     the CO(1-0), CO(2-1), or CO(3-2) lines based on metallicity,
     stellar surface density, and SFR surface density on kpc scales.
 
-    Reference: Schinnere & Leroy (2024), ARA&A
+    Reference: Schinnerer & Leroy (2024), ARA&A, arXiv:2403.19843
 
     Parameters
     ----------
@@ -637,7 +637,7 @@ def predict_alphaCO_SL24(
     Sigma_star_thresh : number or Quantity (default: 1e2)
         Stellar surface density threshold (in Msun/pc^2 unit),
         above which the starburst term is turned on.
-    Sigma_star_uplim : number or Quantity (default: 1e3)
+    Sigma_star_uplim : number or Quantity (default: np.inf)
         Upper limit of stellar surface density (in Msun/pc^2 unit),
         at which the starburst term is clipped.
     sfr_pl : number (default: 0.125)
