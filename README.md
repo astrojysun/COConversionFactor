@@ -21,6 +21,20 @@ Python implementation of existing CO-to-H2 conversion factor prescriptions in th
 + `predict_logOH_CALIFA17`: predict the gas phase abundance from mass-metallicity relations reported in [S&aacute;nchez et al. (2017)](https://ui.adsabs.harvard.edu/abs/2017MNRAS.469.2121S).
 + `extrapolate_logOH_radially`: extrapolate the abundance within a galaxy assuming a radial gradient (e.g., [S&aacute;nchez et al. 2014](https://ui.adsabs.harvard.edu/abs/2014A%26A...563A..49S)).
 
+## Installation
+
+You can install the package directly from PyPI (https://pypi.org/project/CO-conversion-factor/) via
+
+```
+pip install --user CO_conversion_factor
+```
+
+## Dependencies
+
++ [`numpy`](https://numpy.org/)
++ [`scipy`](https://scipy.org/)
++ [`astropy`](https://www.astropy.org/)
+
 ## Credits
 
 If you use tools from this repo in a publication, please make sure to cite the relevant source papers (see links above).
