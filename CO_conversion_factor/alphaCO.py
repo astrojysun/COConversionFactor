@@ -68,8 +68,8 @@ def predict_alphaCO10_N12(Zprime=None, WCO10GMC=None):
     else:
         WCO = WCO10GMC
 
-    alphaCO10 = 10.7 * np.atleast_1d(WCO)**-0.32
-    alphaCO10[alphaCO10 > 6.3] = 6.3
+    alphaCO10 = np.clip(
+        10.7 * np.atleast_1d(WCO)**-0.32, None, 6.3)
     alphaCO10 = alphaCO10 / np.atleast_1d(Zprime)**0.65
     alphaCO10 *= 1.35  # include Helium contribution
 
@@ -140,8 +140,7 @@ def predict_alphaCO10_B13(
             Sigtotkpc100 = Sigmatotkpc.to('100 Msun / pc^2').value
         else:
             Sigtotkpc100 = np.atleast_1d(Sigmatotkpc) / 100
-        f_SB = Sigtotkpc100**-0.5
-        f_SB[f_SB > 1] = 1
+        f_SB = np.clip(Sigtotkpc100**-0.5, None, 1)
         alphaCO10 = alphaCO10 * f_SB
     else:
         if hasattr(WCO10kpc, 'unit'):
@@ -176,7 +175,7 @@ def predict_alphaCO10_B13(
     # clip at optically thin limit
     alphaCO10_OTL = (
         0.34 * (T_ex / 30) * np.exp(5.53/T_ex - 5.53/30))
-    alphaCO10[alphaCO10 < alphaCO10_OTL] = alphaCO10_OTL
+    alphaCO10 = np.clip(alphaCO10, alphaCO10_OTL, None)
 
     if alphaCO10.size == 1:
         alphaCO10 = alphaCO10.item()
@@ -246,8 +245,7 @@ def predict_alphaCO10_B13_original(
             Sigtotkpc100 = Sigmatotkpc.to('100 Msun / pc^2').value
         else:
             Sigtotkpc100 = np.atleast_1d(Sigmatotkpc) / 100
-        f_SB = Sigtotkpc100**-0.5
-        f_SB[f_SB > 1] = 1
+        f_SB = np.clip(Sigtotkpc100**-0.5, None, 1)
         alphaCO10 = alphaCO10 * f_SB
     else:
         if hasattr(WCO10GMC, 'unit'):
@@ -581,15 +579,12 @@ def predict_alphaCO21_T24(
 
     if not add_metal:
         alphaCO21 = (
-            np.minimum(np.maximum(
-                vdisp, vdisp_lolim), vdisp_uplim)**-0.81 *
+            np.clip(vdisp, vdisp_lolim, vdisp_uplim)**-0.81 *
             10**1.05 / 0.65)
     else:
         alphaCO21 = (
-            np.minimum(np.maximum(
-                Zprime, Zprime_lolim), Zprime_uplim)**-1.6 *
-            np.minimum(np.maximum(
-                vdisp, vdisp_lolim), vdisp_uplim)**-0.67 *
+            np.clip(Zprime, Zprime_lolim, Zprime_uplim)**-1.6 *
+            np.clip(vdisp, vdisp_lolim, vdisp_uplim)**-0.67 *
             10**1.00 / 0.65)
 
     return alphaCO21 * u.Unit('Msun s / (pc2 K km)')
@@ -716,22 +711,20 @@ def predict_alphaCO_SL24(
         Sigsfr_norm = Sigma_sfr_norm
 
     # CO-dark term
-    f_term = np.minimum(
-        np.maximum(Zprime, Zprime_lolim), Zprime_uplim
-    ) ** metal_pl
+    f_term = np.clip(
+        Zprime, Zprime_lolim, Zprime_uplim) ** metal_pl
 
     # starburst term
-    g_term = np.minimum(
-        np.maximum(Sigstar/Sigstar_thresh, 1),
-        Sigstar_uplim/Sigstar_thresh
-    ) ** stellar_pl
+    g_term = (np.clip(
+        Sigstar, Sigstar_thresh, Sigstar_uplim) /
+        Sigstar_thresh) ** stellar_pl
 
     # CO line ratio
     if J == '1-0':
         rco = 1.0
     else:
         rco = rco_norm * (Sigsfr / Sigsfr_norm) ** sfr_pl
-        rco = np.minimum(np.maximum(rco, rco_lolim), rco_uplim)
+        rco = np.clip(rco, rco_lolim, rco_uplim)
 
     alphaCO = alphaCO10_Galactic * f_term * g_term / rco
 
