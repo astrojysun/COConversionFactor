@@ -1,6 +1,6 @@
 # COConversionFactor
 
-Python implementation of existing CO-to-H2 conversion factor prescriptions in the literature.
+Python implementation of existing CO-to-H2 conversion factor prescriptions in the literature (see Appendix D in [Sun et al. 2025](https://ui.adsabs.harvard.edu/abs/2025ApJ...994..263S)).
 
 ## Table of content
 
@@ -37,6 +37,6 @@ pip install --user CO_conversion_factor
 
 ## Credits
 
-If you use tools from this repo in a publication, please make sure to cite the relevant source papers (see links above).
+If you use tools from this repo in a publication, please cite [Sun et al. (2025)](https://ui.adsabs.harvard.edu/abs/2025ApJ...994..263S) and the relevant source papers (see links above).
 
 Please also consider acknowledgements to [`astropy`](https://github.com/astropy/astropy) and the other required packages.
